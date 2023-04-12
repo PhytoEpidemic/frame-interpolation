@@ -517,7 +517,6 @@ $Interpolate.Add_Click({
             title FILM
             cd %~dp0
             "+$SetupEnv+"
-            cd %~dp0frame-interpolation
             python -m eval.interpolator_test ^
    --frame1 `"$($InputOne.Tag)`" ^
    --frame2 `"$($InputTwo.Tag)`" ^
@@ -549,7 +548,6 @@ $Interpolate.Add_Click({
 title FILM
 cd %~dp0
 "+$SetupEnv+"
-cd %~dp0frame-interpolation
 
 python -m eval.interpolator_cli ^
    --pattern `"$($global:DirOfFrames)`" ^
@@ -559,8 +557,8 @@ python -m eval.interpolator_cli ^
     }
 
     if ($Script) {
-        $Script | Out-File -FilePath "run2.bat" -Encoding ASCII
-        $global:process = Start-Process "run2.bat" -PassThru
+        $Script | Out-File -FilePath "runFILM.bat" -Encoding ASCII
+        $global:process = Start-Process "runFILM.bat" -PassThru
         $ProcessTracker.Start()
     } else {
         $Interpolate.Enabled = $true
