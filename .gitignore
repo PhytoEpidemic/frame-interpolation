@@ -4,3 +4,5 @@ ffprobe.exe
 test.bat
 test.ps1
 pretrained_models
+runFILM.bat
+eval/__pycache__
