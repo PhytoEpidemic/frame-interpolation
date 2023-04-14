@@ -337,10 +337,14 @@ $pictureBox.Location = New-Object System.Drawing.Point(20,80)
 
 
 # Load sprite sheet image
-$openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-$openFileDialog.Filter = "Image Files (*.png, *.jpg, *.bmp)|*.png;*.jpg;*.bmp"
-$openFileDialog.Title = "Select a Sprite Sheet"
+$openImageDialog = New-Object System.Windows.Forms.OpenFileDialog
+$openImageDialog.Filter = "Image Files (*.png, *.jpg, *.bmp)|*.png;*.jpg;*.bmp"
+$openImageDialog.Title = "Select a Sprite Sheet"
 $global:ImageObject = ""
+$openVideoDialog = New-Object System.Windows.Forms.OpenFileDialog
+$openVideoDialog.Filter = "Video Files (*.mp4, *.gif, *.mov, *.mkv, *.avi)|*.mp4;*.gif;*.mov;*.mkv;*.avi"
+$openVideoDialog.Title = "Select a Video File"
+
 
 
 # Create numeric up-down controls for columns and rows
@@ -620,28 +624,28 @@ function CropImageWithFFmpeg($inputFile, $outputPath, $columns, $rows) {
 }
 
 function loadSpriteSheet {
-    $result = $openFileDialog.ShowDialog()
-            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-                $global:ImageFile = $openFileDialog.FileName
-                $global:ImageObject = [System.Drawing.Image]::FromFile($global:ImageFile)
-                $pictureBox.Image = $global:ImageObject
-                AddControlsToForm $Form $labelObjects
-                AddControlsToForm $Form $numericUpDowns
-                AddControlsToForm $Form @(
-                    $ForceTransparentBackgroundCheckbox,
-                    $ExactSwapCheckBox,
-                    $columnsLabel,
-                    $rowsLabel,
-                    $columnsNumericUpDown,
-                    $rowsNumericUpDown,
-                    $applyButton,
-                    $BackgroundColorLabel,
-                    $TagBlackPixalsCheckbox,
-                    $pictureBox
-                )
-                DrawGrid $columnsNumericUpDown.Value $rowsNumericUpDown.Value
-                SetARGBValuesFromMostFrequentColor($global:ImageFile)
-            }
+    $result = $openImageDialog.ShowDialog()
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $global:ImageFile = $openImageDialog.FileName
+        $global:ImageObject = [System.Drawing.Image]::FromFile($global:ImageFile)
+        $pictureBox.Image = $global:ImageObject
+        AddControlsToForm $Form $labelObjects
+        AddControlsToForm $Form $numericUpDowns
+        AddControlsToForm $Form @(
+            $ForceTransparentBackgroundCheckbox,
+            $ExactSwapCheckBox,
+            $columnsLabel,
+            $rowsLabel,
+            $columnsNumericUpDown,
+            $rowsNumericUpDown,
+            $applyButton,
+            $BackgroundColorLabel,
+            $TagBlackPixalsCheckbox,
+            $pictureBox
+        )
+        DrawGrid $columnsNumericUpDown.Value $rowsNumericUpDown.Value
+        SetARGBValuesFromMostFrequentColor($global:ImageFile)
+    }
 }
 $BrowseSpritesheetButton = New-Object System.Windows.Forms.Button
 $BrowseSpritesheetButton.Location = New-Object System.Drawing.Point(280, 20) # Set the X and Y coordinates as needed
@@ -694,7 +698,7 @@ $comboBox_SelectedIndexChanged = {
             # Code for Sprite sheet
             #loadSpriteSheet
             $Form.Controls.Add($BrowseSpritesheetButton)
-            
+            $openImageDialog.Title = "Select a Sprite Sheet"
         }
         'Two Images' {
             # Code for Two Images
@@ -706,6 +710,13 @@ $comboBox_SelectedIndexChanged = {
                 $RemoveBlackPixelsCheckBox,
                 $SetTaggedPixelsToBlack
             )
+            $InputOne.Text = "Click to browse or drag image here"
+            $InputTwo.Text = "Click to browse or drag image here"
+            $InputOne.BackgroundImage = $null
+            $InputOne.Tag = $null
+            $InputTwo.BackgroundImage = $null
+            $InputTwo.Tag = $null
+            $openImageDialog.Title = "Select an Image File"
         }
         'Video' {
             AddControlsToForm $Form @(
@@ -714,6 +725,9 @@ $comboBox_SelectedIndexChanged = {
                 $Label2,
                 $InputOne
             )
+            $InputOne.Text = "Click to browse or drag video here"
+            $InputOne.BackgroundImage = $null
+            $InputOne.Tag = $null
         }
         'Folder of images' {
             AddControlsToForm $Form @(
@@ -725,6 +739,10 @@ $comboBox_SelectedIndexChanged = {
                 $RemoveBlackPixelsCheckBox,
                 $SetTaggedPixelsToBlack
             )
+            $InputOne.Text = "Click to browse or drag folder here"
+            $InputOne.BackgroundImage = $null
+            $InputOne.Tag = $null
+            
         }
     }
 }
@@ -819,7 +837,7 @@ $Interpolate.Size = New-Object System.Drawing.Size(100, 50)
 $Interpolate.Add_Click({
     
     DisableControls $FullControlList
-    
+    $Script = $false
     $SetupEnv = "call environment.bat"
     if (IsAnaconda3Installed) {
         $SetupEnv = "call conda activate envr\frame_interpolation"
@@ -846,34 +864,47 @@ $Interpolate.Add_Click({
         }
     } else {
         
-        
-        $global:DirOfFrames = $InputOne.Tag
-        # Check if the file is a video file
-        if ($InputOne.Tag -and ([System.IO.Path]::GetExtension($InputOne.Tag) -imatch "\.(mp4|avi|mkv|mov|gif)$")) {
-            $videoFile = $InputOne.Tag
-            $videoFolderPath = [System.IO.Path]::GetDirectoryName($videoFile)
-            $videoFileName = [System.IO.Path]::GetFileNameWithoutExtension($videoFile)
-            $outputFolderName = $videoFileName + "_frames"
-            $outputFolderPath = Join-Path $videoFolderPath $outputFolderName
-        
-            # Extract frames using SplitVideoToFrames function
-            SplitVideoToFrames $videoFile $outputFolderPath
-            $global:DirOfFrames = $outputFolderPath
+        $SaveFileDialog = New-Object System.Windows.Forms.SaveFileDialog
+        $SaveFileDialog.Filter = "MP4 Files|*.mp4|AVI Files|*.avi|MKV Files|*.mkv|MOV Files|*.mov|GIF Files|*.gif"
+
+        $SaveFileDialog.Title = "Save interpolated image"
+        $result = ""
+        if ($comboBox.SelectedItem -eq "Video"){
+            $result = $SaveFileDialog.ShowDialog()
         }
+        if ($result -eq "OK" -or ($comboBox.SelectedItem -ne "Video")) {
+            if ($result -eq "OK"){
+                $global:OutputVideoFile = $SaveFileDialog.FileName
+            }
+            
+            $global:DirOfFrames = $InputOne.Tag
+            # Check if the file is a video file
+            if ($InputOne.Tag -and ([System.IO.Path]::GetExtension($InputOne.Tag) -imatch "\.(mp4|avi|mkv|mov|gif)$")) {
+                $videoFile = $InputOne.Tag
+                $videoFolderPath = [System.IO.Path]::GetDirectoryName($videoFile)
+                $videoFileName = [System.IO.Path]::GetFileNameWithoutExtension($videoFile)
+                $outputFolderName = $videoFileName + "_frames"
+                $outputFolderPath = Join-Path $videoFolderPath $outputFolderName
+            
+                # Extract frames using SplitVideoToFrames function
+                SplitVideoToFrames $videoFile $outputFolderPath
+                $global:DirOfFrames = $outputFolderPath
+            }
 
-        $Number = $NumericUpDown1.Value
+            $Number = $NumericUpDown1.Value
 
-        $Script = "
-            @echo off
-            title FILM
-            cd %~dp0
-            "+$SetupEnv+"
+            $Script = "
+                @echo off
+                title FILM
+                cd %~dp0
+                "+$SetupEnv+"
 
-            python -m eval.interpolator_cli ^
-               --pattern `"$($global:DirOfFrames)`" ^
-               --model_path pretrained_models/film_net/Style/saved_model ^
-               --times_to_interpolate $Number
-        "
+                python -m eval.interpolator_cli ^
+                   --pattern `"$($global:DirOfFrames)`" ^
+                   --model_path pretrained_models/film_net/Style/saved_model ^
+                   --times_to_interpolate $Number
+            "
+        }
     }
 
     if ($Script) {
@@ -881,7 +912,7 @@ $Interpolate.Add_Click({
         $global:process = Start-Process "runFILM.bat" -PassThru
         $ProcessTracker.Start()
     } else {
-        #$Interpolate.Enabled = $true
+        EnableControls $FullControlList
     }
 })
 
@@ -898,8 +929,8 @@ $ProcessTracker.Add_Tick({
             $outputFileName = $InputFileName + "_interp"+ [System.IO.Path]::GetExtension($InputFile)
             $outputFilePath = Join-Path $InputFilePath $outputFileName
         if ($InputOne.Tag -and ([System.IO.Path]::GetExtension($InputOne.Tag) -imatch "\.(mp4|avi|mkv|mov|gif)$")) {
-                
-                EncodeFramesToVideo ($global:DirOfFrames + "\interpolated_frames") (GetUniquePath $outputFilePath) (GetVideoFramerate $InputFile)
+            
+                EncodeFramesToVideo ($global:DirOfFrames + "\interpolated_frames") (GetUniquePath $global:OutputVideoFile) (GetVideoFramerate $InputFile)
             }
         
         if (($comboBox.SelectedItem -eq "Folder of images")) {
@@ -1035,13 +1066,56 @@ function Button_DragDrop([object]$sender, [System.Windows.Forms.DragEventArgs]$e
     }
 }
 
+$InputClick = {
+    switch ($comboBox.SelectedItem) {
+        'Two Images' {
+            $result = $openImageDialog.ShowDialog()
+            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                $global:ImageFile = $openImageDialog.FileName
+                $this.Text = ""
+                $this.BackgroundImageLayout = "Zoom"
+                $image = [System.Drawing.Image]::FromFile($openImageDialog.FileName)
+                $this.BackgroundImage = $image
+                $this.Tag = $openImageDialog.FileName
+            }
+            
+                
+            
+        }
+        'Video' {
+            $result = $openVideoDialog.ShowDialog()
+            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                $global:ImageFile = $openVideoDialog.FileName
+                $this.Text = ""
+                $this.BackgroundImageLayout = "Zoom"
+                $extension = [System.IO.Path]::GetExtension($openVideoDialog.FileName)
 
+                if ($extension -imatch "\.(gif)$") {
+                    $image = [System.Drawing.Image]::FromFile($openVideoDialog.FileName)
+                    $this.BackgroundImage = $image
+                } else {
+                    $this.Text = Split-Path $openVideoDialog.FileName -Leaf
+                }
+                $this.Tag = $openVideoDialog.FileName
+            }
+        }
+        'Folder of images' {
+            $result = ChooseFolder "Image Folder"
+            if ($result) {
+                $this.Text = Split-Path $result -Leaf
+                
+                $this.Tag = $result
+            }
+        }
+    }
+}
 
 $InputOne = New-Object System.Windows.Forms.Button
 $InputOne.Text = "Drop image or folder here"
 $InputOne.Location = New-Object System.Drawing.Point(30, 80)
 $InputOne.Size = New-Object System.Drawing.Size(200, 200)
 $InputOne.AllowDrop = $true
+$InputOne.Add_Click($InputClick)
 
 
 $InputOne.Add_DragEnter({
@@ -1057,6 +1131,7 @@ $InputTwo.Text = "Drop image or folder here"
 $InputTwo.Location = New-Object System.Drawing.Point(250, 80)
 $InputTwo.Size = New-Object System.Drawing.Size(200, 200)
 $InputTwo.AllowDrop = $true
+$InputTwo.Add_Click($InputClick)
 $InputTwo.Add_DragEnter({
     Button_DragEnter $InputTwo $_
 })
