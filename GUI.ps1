@@ -350,7 +350,7 @@ $openVideoDialog.Title = "Select a Video File"
 # Create numeric up-down controls for columns and rows
 $columnsLabel = New-Object System.Windows.Forms.Label
 $columnsLabel.Text = 'Columns:'
-$columnsLabel.Location = New-Object System.Drawing.Point(660,10)
+$columnsLabel.Location = New-Object System.Drawing.Point(660,25)
 $columnsLabel.AutoSize = $true
 
 $rowsLabel = New-Object System.Windows.Forms.Label
@@ -359,16 +359,25 @@ $rowsLabel.Location = New-Object System.Drawing.Point(660,50)
 $rowsLabel.AutoSize = $true
 
 $columnsNumericUpDown = New-Object System.Windows.Forms.NumericUpDown
-$columnsNumericUpDown.Location = New-Object System.Drawing.Point(720,10)
+$columnsNumericUpDown.Location = New-Object System.Drawing.Point(720,25)
 $columnsNumericUpDown.Minimum = 1
 
 $rowsNumericUpDown = New-Object System.Windows.Forms.NumericUpDown
 $rowsNumericUpDown.Location = New-Object System.Drawing.Point(720,50)
 $rowsNumericUpDown.Minimum = 1
 
-
-
-
+$ChooseModelLabel = New-Object System.Windows.Forms.Label
+$ChooseModelLabel.Text = 'Choose Model:'
+$ChooseModelLabel.Location = New-Object System.Drawing.Point(400,25)
+$ChooseModelLabel.AutoSize = $true
+$ModelComboBox = New-Object System.Windows.Forms.ComboBox
+    $ModelComboBox.Location = New-Object System.Drawing.Point(400, 50)
+    $ModelComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $ModelComboBox.Items.Add('Style')
+    $ModelComboBox.Items.Add('VGG')
+    $ModelComboBox.Items.Add('L1')
+    $ModelComboBox.Items.Add('test')
+$ModelComboBox.SelectedItem = "Style"
 
 
 
@@ -542,6 +551,15 @@ $columnsNumericUpDown.add_ValueChanged($columnsNumericUpDown_ValueChanged)
 $rowsNumericUpDown.add_ValueChanged($rowsNumericUpDown_ValueChanged)
 
 
+function CheckPythonInstallation {
+    $pythonPath = ".\envr\frame_interpolation\python.exe"
+    return Test-Path $pythonPath
+}
+function CheckPythonCondaInstallation {
+    $pythonPath = ".\envr\frame_interpolation\python.exe"
+    $CondaMeta = ".\envr\frame_interpolation\conda-meta"
+    return ((Test-Path $pythonPath) -and (Test-Path $CondaMeta))
+}
 
 
 function IsAnaconda3Installed() {
@@ -648,7 +666,7 @@ function loadSpriteSheet {
     }
 }
 $BrowseSpritesheetButton = New-Object System.Windows.Forms.Button
-$BrowseSpritesheetButton.Location = New-Object System.Drawing.Point(280, 20) # Set the X and Y coordinates as needed
+$BrowseSpritesheetButton.Location = New-Object System.Drawing.Point(280, 30) # Set the X and Y coordinates as needed
 $BrowseSpritesheetButton.AutoSize = $true # Set the width and height as needed
 $BrowseSpritesheetButton.Text = "Load Sprite Sheet"
 
@@ -688,7 +706,9 @@ $comboBox_SelectedIndexChanged = {
         $PostProcessingLabel,
         $RemoveBlackPixelsCheckBox,
         $SetTaggedPixelsToBlack,
-        $ExactSwapCheckBox
+        $ExactSwapCheckBox,
+        $ModelComboBox,
+        $ChooseModelLabel
 
     )
     RemoveControlsFromForm $Form $labelObjects
@@ -708,7 +728,9 @@ $comboBox_SelectedIndexChanged = {
                 $InputTwo,
                 $PostProcessingLabel,
                 $RemoveBlackPixelsCheckBox,
-                $SetTaggedPixelsToBlack
+                $SetTaggedPixelsToBlack,
+                $ModelComboBox,
+                $ChooseModelLabel
             )
             $InputOne.Text = "Click to browse or drag image here"
             $InputTwo.Text = "Click to browse or drag image here"
@@ -723,7 +745,9 @@ $comboBox_SelectedIndexChanged = {
                 $Interpolate,
                 $NumericUpDown1,
                 $Label2,
-                $InputOne
+                $InputOne,
+                $ModelComboBox,
+                $ChooseModelLabel
             )
             $InputOne.Text = "Click to browse or drag video here"
             $InputOne.BackgroundImage = $null
@@ -737,7 +761,9 @@ $comboBox_SelectedIndexChanged = {
                 $NumericUpDown1,
                 $Label2,
                 $RemoveBlackPixelsCheckBox,
-                $SetTaggedPixelsToBlack
+                $SetTaggedPixelsToBlack,
+                $ModelComboBox,
+                $ChooseModelLabel
             )
             $InputOne.Text = "Click to browse or drag folder here"
             $InputOne.BackgroundImage = $null
@@ -813,11 +839,11 @@ $BrowseButton.Add_Click({
 $Label2 = New-Object System.Windows.Forms.Label
 $Label2.Text = "Number of passes (1-6):"
 $Label2.AutoSize = $true
-$Label2.Location = New-Object System.Drawing.Point(10, 18)
+$Label2.Location = New-Object System.Drawing.Point(140, 35)
 
 
 $NumericUpDown1 = New-Object System.Windows.Forms.NumericUpDown
-$NumericUpDown1.Location = New-Object System.Drawing.Point(140, 16)
+$NumericUpDown1.Location = New-Object System.Drawing.Point(140, 55)
 $NumericUpDown1.Minimum = 1
 $NumericUpDown1.Maximum = 6
 $NumericUpDown1.Add_TextChanged({
@@ -832,7 +858,7 @@ $NumericUpDown1.Add_TextChanged({
 
 $Interpolate = New-Object System.Windows.Forms.Button
 $Interpolate.Text = "Interpolate"
-$Interpolate.Location = New-Object System.Drawing.Point(280, 20)
+$Interpolate.Location = New-Object System.Drawing.Point(280, 25)
 $Interpolate.Size = New-Object System.Drawing.Size(100, 50)
 $Interpolate.Add_Click({
     
@@ -858,7 +884,7 @@ $Interpolate.Add_Click({
                 python -m eval.interpolator_test ^
                    --frame1 `"$($InputOne.Tag)`" ^
                    --frame2 `"$($InputTwo.Tag)`" ^
-                   --model_path pretrained_models/film_net/Style/saved_model ^
+                   --model_path pretrained_models/film_net/"+$ModelComboBox.SelectedItem+"/saved_model ^
                    --output_frame `"$global:OutputImagePath`"
             "
         }
@@ -901,7 +927,7 @@ $Interpolate.Add_Click({
 
                 python -m eval.interpolator_cli ^
                    --pattern `"$($global:DirOfFrames)`" ^
-                   --model_path pretrained_models/film_net/Style/saved_model ^
+                   --model_path pretrained_models/film_net/"+$ModelComboBox.SelectedItem+"/saved_model ^
                    --times_to_interpolate $Number
             "
         }
@@ -1139,7 +1165,7 @@ $InputTwo.Add_DragDrop({
     Button_DragDrop $InputTwo $_
 })
 
-
+$labels = @("A","R","G","B")
 $labelObjects = @()
 
 for ($i = 0; $i -lt $labels.Length; $i++) {
@@ -1216,12 +1242,214 @@ $FullControlList = @(
     $InputTwo,
     $NumericUpDown1,
     $RemoveBlackPixelsCheckBox,
-    $SetTaggedPixelsToBlack
+    $SetTaggedPixelsToBlack,
+    $ModelComboBox
 )
+
+
+
+
+
+# Create the menu strip
+$menustrip = New-Object System.Windows.Forms.MenuStrip
+$menustrip.Dock = [System.Windows.Forms.DockStyle]::Top
+$form.Controls.Add($menustrip)
+
+# Create the File menu item
+$fileMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+$fileMenuItem.Text = 'File'
+$menustrip.Items.Add($fileMenuItem)
+
+# Create the Settings menu item
+$settingsMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+$settingsMenuItem.Text = 'Settings'
+$fileMenuItem.DropDownItems.Add($settingsMenuItem)
+$settingsForm = New-Object System.Windows.Forms.Form
+    $settingsForm.Text = 'Settings'
+    $settingsForm.StartPosition = 'CenterParent'
+    $settingsForm.Size = '300,200'
+    $settingsForm.FormBorderStyle = 'FixedDialog'
+    $settingsForm.MaximizeBox = $false
+    $settingsForm.MinimizeBox = $false
+    $settingsForm.Icon = "logo3.ico"
+
+
+function loadSettingsForm {
+    
+    # Check if Anaconda3 is installed
+    $anacondaAvailable = IsAnaconda3Installed
+
+    # Create settings form
+    
+
+    # Create ComboBox
+    $EnvComboBox = New-Object System.Windows.Forms.ComboBox
+    $EnvComboBox.Location = New-Object System.Drawing.Point(20, 25)
+    $EnvComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $EnvComboBox.Items.Add('Embedded Python')
+    if ($anacondaAvailable) {
+        $EnvComboBox.Items.Add('Anaconda3')
+    }
+    $EnvLabel = New-Object System.Windows.Forms.Label
+    $EnvLabel.Location = New-Object System.Drawing.Point(20, 5)
+    $EnvLabel.Text = "Python Environment:"
+    $EnvLabel.AutoSize = $true
+    
+    $Config = LoadSettings
+    if ($null -eq $Config.EnvOption) {
+        $EnvComboBox.SelectedItem = "Embedded Python"
+    } else {
+        $EnvComboBox.SelectedItem = $Config.EnvOption
+    }
+    
+    $settingsForm.Controls.Add($EnvComboBox)
+    $settingsForm.Controls.Add($EnvLabel)
+    
+    $InstallEnv = New-Object System.Windows.Forms.Button
+    $InstallEnv.Location = New-Object System.Drawing.Point(30, 60)
+    $InstallEnv.Text = "Setup Environment"
+    $InstallEnv.AutoSize = $true
+    $global:DownloadProcess = $null
+    $InstallEnv.Add_Click({
+        $DownloadLabel.Text = "Downloading..."
+        $InstallEnv.Enabled = $false
+
+        switch ($EnvComboBox.SelectedItem) {
+            "Embedded Python" { $global:DownloadProcess = Start-Process -FilePath "downloadenv.bat" -PassThru }
+            "Anaconda3" { $global:DownloadProcess = Start-Process -FilePath "setup_conda.bat" -PassThru }
+        }
+        $DownloadTimer.Start()
+    })
+    $settingsForm.Controls.Add($InstallEnv)
+
+    $DownloadLabel = New-Object System.Windows.Forms.Label
+    $DownloadLabel.Location = New-Object System.Drawing.Point(30, 90)
+    $DownloadLabel.AutoSize = $true
+    $settingsForm.Controls.Add($DownloadLabel)
+
+    $DownloadTimer = New-Object System.Windows.Forms.Timer
+    $DownloadTimer.Interval = 1000
+    $DownloadTimer.Add_Tick({
+        if (($null -eq $global:DownloadProcess) -or ($global:DownloadProcess.HasExited)) {
+            $DownloadLabel.Text = "Complete!"
+            $DownloadTimer.Stop()
+            if (CheckPythonInstallation) {
+                $settingsForm.Controls.Add($saveButton)
+            }
+        }
+    })
+    # Create Save button
+    $saveButton = New-Object System.Windows.Forms.Button
+    $saveButton.Text = 'Save'
+    $saveButton.Location = New-Object System.Drawing.Point(20, 120)
+    $saveButton.Size = New-Object System.Drawing.Size(75, 23)
+    $saveButton.Add_Click({
+        SaveSettings ("EnvOption") ($EnvComboBox.SelectedItem)
+        $settingsForm.Close()
+    })
+    if (CheckPythonInstallation) {
+        $settingsForm.Controls.Add($saveButton)
+    }
+    # Create Cancel button
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Text = 'Cancel'
+    $cancelButton.Location = New-Object System.Drawing.Point(110, 120)
+    $cancelButton.Size = New-Object System.Drawing.Size(75, 23)
+    $cancelButton.Add_Click({ $settingsForm.Close() })
+    $settingsForm.Controls.Add($cancelButton)
+    $settingsForm.ShowDialog()
+    RemoveControlsFromForm $settingsForm @(
+        $EnvComboBox,
+        $saveButton,
+        $cancelButton,
+        $InstallEnv,
+        $DownloadLabel,
+        $EnvLabel
+    )
+}
+
+
+$settingsMenuItem.Add_Click({
+    loadSettingsForm
+    
+})
+function ConvertTo-Hashtable($inputObject) {
+    $hashTable = @{}
+    Get-Member -InputObject $inputObject -MemberType NoteProperty | ForEach-Object {
+        $hashTable[$_.Name] = $inputObject.($_.Name)
+    }
+    return $hashTable
+}
+
+# Functions
+function SaveSettings([string]$key, $Settingvalue) {
+    $appData = [Environment]::GetFolderPath('ApplicationData')
+    $settingsDir = Join-Path $appData 'FILMtoolkit'
+    $settingsFile = Join-Path $settingsDir 'settings.json'
+
+    if (-not (Test-Path $settingsDir)) {
+        New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
+    }
+    
+    # Load existing settings
+    if (Test-Path $settingsFile) {
+        $settingsJson = Get-Content -Path $settingsFile
+        $settingsObject = $settingsJson | ConvertFrom-Json
+        $settings = ConvertTo-Hashtable $settingsObject
+    } else {
+        $settings = @{}
+    }
+
+    # Update the specified key with the provided value
+    Write-Host $Settingvalue
+    $settings[$key] = $Settingvalue
+
+    # Save the updated settings
+    $settingsJson = $settings | ConvertTo-Json
+    Set-Content -Path $settingsFile -Value $settingsJson
+}
+function SettingsExists {
+    $appData = [Environment]::GetFolderPath('ApplicationData')
+    $settingsDir = Join-Path $appData 'FILMtoolkit'
+    $settingsFile = Join-Path $settingsDir 'settings.json'
+    return (Test-Path $settingsFile)
+}
+
+
+function LoadSettings {
+    $appData = [Environment]::GetFolderPath('ApplicationData')
+    $settingsDir = Join-Path $appData 'FILMtoolkit'
+    $settingsFile = Join-Path $settingsDir 'settings.json'
+
+    if (Test-Path $settingsFile) {
+        $settingsJson = Get-Content -Path $settingsFile
+        $settings = $settingsJson | ConvertFrom-Json
+
+        return $settings
+    } else {
+        return $null
+    }
+}
+
+# Load settings
+
 
 & $comboBox_SelectedIndexChanged
 $Form.StartPosition = "CenterScreen"
 $Form.AutoSize = $true
 $Form.AutoSizeMode = "GrowAndShrink"
-$Form.ShowDialog()
+$Form.Icon = "logo3.ico"
+if ((SettingsExists) -and (CheckPythonInstallation)) {
+    $Form.ShowDialog()
+} else {
+    loadSettingsForm
+    if ((SettingsExists) -and (CheckPythonInstallation)) {
+        $Form.ShowDialog()
+    }
+}
+
+
+
+
+
 $ProcessTracker.Stop()
